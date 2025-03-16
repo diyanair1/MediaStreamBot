@@ -1,0 +1,10 @@
+# Ignore virtual environment
+venv/
+
+# Ignore ChromeDriver binary
+chromedriver-mac-arm64
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
