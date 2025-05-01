@@ -8,3 +8,13 @@ chromedriver-mac-arm64
 __pycache__/
 *.pyc
 *.pyo
+
+# Log Files
+*.Log
+
+# Success and Failed List
+success_list.json
+failed_list.json
+
+# Ignore all video files
+archive_vids/

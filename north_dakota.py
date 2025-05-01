@@ -1,4 +1,4 @@
-# Description: This script downloads all videos of the sessions on a specific date from the North Dakota Legislative Assembly website.
+# Description: This script downloads all videos of the sessions on given range of dates from the North Dakota website.
 import time
 import json
 from selenium import webdriver
@@ -12,7 +12,7 @@ from datetime import datetime
 import os
 
 def load_config():
-    config_path = "/Users/diya/Desktop/Selenium/gov_sesh/config_nd.yaml"
+    config_path = "/config_nd.yaml"
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
@@ -67,10 +67,43 @@ def append_to_json(entry, filename):
     with open(os.path.join(success_failed_path, filename), "w") as file:
         json.dump(event_list, file, indent=4)  
 
+def format_title(title, event_date, event_time):
+
+    # Parse the date and convert it to the required format
+    date_obj = datetime.strptime(event_date, "%A, %b %d, %Y")
+    formatted_date = date_obj.strftime("%Y-%m-%d")
+
+    # Split the time range into start and end times
+    start_time, _ = event_time.split(' - ')
+
+    # Extract hours, minutes, and period (AM/PM)
+    time_part, period = start_time.split(' ')
+    hours, minutes = map(int, time_part.split(':'))
+
+    # Convert to 24-hour format if it's PM and not 12 PM
+    if period == "PM" and hours != 12:
+        hours += 12
+    # Convert 12 AM to 0 hours for midnight
+    if period == "AM" and hours == 12:
+        hours = 0
+
+    # Format as HH-MM
+    formatted_time = f"{hours:02d}-{minutes:02d}"
+
+    # Format the time in HH-MM format
+    formatted_duration = f"{hours:02d}-{minutes:02d}"
+
+    # Combine everything to create the title
+    video_title = f"{formatted_date}_{formatted_time}_{title.replace(' ', '_')}.mp4"
+
+    return video_title    # YYYY-MM-DD_HH-MM_The_Title_of_Video.mp4
+
 def download_video(driver):
 
     driver.get(home_url)
     time.sleep(2)
+    recordings = driver.find_element(By.ID, "recordLink")
+    recordings.click()
 
     startDate = driver.find_element(By.ID, 'txtStartDate')
     startDate.click()
@@ -85,7 +118,7 @@ def download_video(driver):
 
     filter = driver.find_element(By.ID, 'btnFilter')
     filter.click()
-    time.sleep(5)
+    time.sleep(2)
     second_card = WebDriverWait(driver, 20).until(
         EC.presence_of_element_located((By.CLASS_NAME, 'upcomingeventlist'))
     )
@@ -104,12 +137,23 @@ def download_video(driver):
 
         # Click on the event
         driver.get(event_urls[i])
-        time.sleep(5)
+        time.sleep(3)
 
         logs = driver.get_log("performance")
         m3u8_links = []
 
-        print ("Checking for m3u8 links in the network logs...\n")
+        # Fetching duration and date of event
+        menu_info = driver.find_element(By.ID, 'menu_info')
+        menu_info.click()
+        time.sleep(2)
+        event_time = driver.find_element(By.ID, 'actualtime').text
+        event_date = driver.find_element(By.ID, 'actualdate').text
+
+        # Format the title
+        formatted_title = format_title(event_titles[i], event_date, event_time)
+
+        print(f"\n\nDownloading video: {formatted_title}...")
+        print ("\nChecking for m3u8 links in the network logs...\n\n")
         
         for log in logs:
             try:
@@ -140,44 +184,44 @@ def download_video(driver):
                     "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
                     "-i", m3u8_links[0],  # Input: the m3u8 URL (location of the video playlist)
                     "-c", "copy", # Copy the video codecs without re-encoding
-                    f"{download_path}{event_titles[i]}.mp4"
+                    f"{download_path}{formatted_title}.mp4"
                 ]
 
                 subprocess.run(ffmpeg_command)
                 # Updating the success list
                 entry = {
-                    "title": event_titles[i],
+                    "title": formatted_title,
                     "recorded_date": start_date,
                     "link": m3u8_links[0],
                     "last_attempted_scrape_date": current_date
                 }
                 append_to_json(entry, "success_list.json")
-                print(f"Video downloaded successfully! -> {event_titles[i]}")
+                print(f"\n\nVideo downloaded successfully! -> {formatted_title}")
 
                 end_time = time.time()
                 time_taken = (end_time - start_time)/60
-                print(f"Time taken to download video: {time_taken:.2f} min")
+                print(f"Time taken to download video: {time_taken:.2f} min\n\n")
                 
             except subprocess.CalledProcessError as e:
                 entry = {
-                    "title": event_titles[i],
+                    "title": formatted_title,
                     "recorded_date": start_date,
                     "link": m3u8_links[0],
                     "last_attempted_scrape_date": current_date
                 }
                 append_to_json(entry, "failed_list.json")
-                print(f"Failed to download video! -> {event_titles[i]}")
+                print(f"\n\nFailed to download video! -> {formatted_title}\n\n")
             
         else:
-            print("No .m3u8 links were found in the network logs.")
+            print("\n\nNo .m3u8 links were found in the network logs.")
             entry = {
-                "title": event_titles[i],
+                "title": formatted_title,
                 "recorded_date": start_date,
                 "link": m3u8_links[0],
                 "last_attempted_scrape_date": current_date
             }
             append_to_json(entry, "failed_list.json")
-            print(f"Failed to download video! -> {event_titles[i]}")
+            print(f"Failed to download video! -> {formatted_title}\n\n")
 
 
 def main():

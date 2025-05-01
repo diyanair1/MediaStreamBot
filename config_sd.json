@@ -1,0 +1,8 @@
+{
+  "output_path": "/archive_vids/",
+  "success_download_json_path": "/success_list.json",
+  "failed_download_json_path": "/failed_list.json",
+  "log_path": "/south_dakota.log",
+  "start_date": "2025-03-10", 
+  "end_date": "2025-03-11"
+}

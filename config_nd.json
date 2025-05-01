@@ -1,0 +1,8 @@
+{
+  "download_path": "/archive_vids/",
+  "chromedriver_path": "/chromedriver",
+  "start_date": "2025-03-17",
+  "end_date": "2025-03-17",
+  "home_url": "https://video.ndlegis.gov/",
+  "success_failed_path": "/gov_sesh/"
+}
